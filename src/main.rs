@@ -1,16 +1,12 @@
 use iced::widget::{
     button, column, container, horizontal_space, pick_list, row, text, text_editor, tooltip,
 };
-use iced::{Element, Font, Length, Settings, Subscription, Task, Theme, keyboard};
+use iced::{Center, Element, Font, Length, Settings, Subscription, Task, Theme, keyboard};
 use iced_highlighter;
-
-use smol_str::ToSmolStr;
 
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-
-// s
 
 fn main() -> iced::Result {
     iced::application(Editor::title, Editor::update, Editor::view)
@@ -24,7 +20,7 @@ fn main() -> iced::Result {
             ],
             ..Settings::default()
         })
-        .subscription(Editor::subscription)
+        // .subscription(Editor::subscription)
         .run_with(move || Editor::new())
 }
 
@@ -118,15 +114,6 @@ impl Editor {
         }
     }
 
-    fn subscription(&self) -> Subscription<Message> {
-        keyboard::on_key_press(|key, modifiers| match key {
-            keyboard::Key::Character(val) if modifiers.control() && val == 's'.to_smolstr() => {
-                Some(Message::Save)
-            }
-            _ => None,
-        })
-    }
-
     fn view(&self) -> Element<'_, Message> {
         let controls = row![
             action(new_icon(), "New file", Some(Message::New)),
@@ -143,7 +130,8 @@ impl Editor {
                 Message::ThemeSelected
             )
         ]
-        .spacing(10);
+        .spacing(10)
+        .align_y(Center);
         let input = text_editor(&self.content)
             .placeholder("")
             .on_action(Message::Edit)
@@ -158,7 +146,13 @@ impl Editor {
                         .to_string(),
                 },
                 |highlight, _theme| highlight.to_format(),
-            );
+            )
+            .key_binding(|key_press| match key_press.key.as_ref() {
+                keyboard::Key::Character("s") if key_press.modifiers.command() => {
+                    Some(text_editor::Binding::Custom(Message::Save))
+                }
+                _ => text_editor::Binding::from_key_press(key_press),
+            });
 
         let status_bar = {
             let status = if let Some(Error::IOFailed(error)) = self.error.as_ref() {
@@ -176,10 +170,11 @@ impl Editor {
                 text(format!("{}:{}", line + 1, column + 1))
             };
 
-            row![status, horizontal_space(), position]
+            row![status, horizontal_space(), position].spacing(10)
         };
 
-        container(column![controls, input, status_bar].spacing(10))
+        column![controls, input, status_bar]
+            .spacing(10)
             .padding(10)
             .into()
     }
