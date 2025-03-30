@@ -7,7 +7,7 @@ Let us get into it. Every `iced.rs` app has three main parts:
 * Messages
 * `iced.rs` glue
 
-For example, the state of this app is held in the struct `Editor`:
+For example, the `State` of this app is held in the struct `Editor`:
 ```rust
 struct Editor {
     path: Option<PathBuf>,
@@ -19,14 +19,17 @@ struct Editor {
 ```
 In this way of architecting apps, one seeks to capture all possible states the app can be in. Our editor is basic; we only want to *edit the contents* of the file we have opened, *show the path* of the file, and *choose a theme* from the list of default themes supplied with the library. This accounts for three of `Editor`'s fields. The `error` field is for tasks that can fail through no fault of ours, like opening a file or saving one. The `is_dirty` field is to track unsaved changes so we can make the `save button` active or not. 
 
-The changing of the state of the application gives the perception of interactivity. `Messages` provide the ***only*** way to change the `State` of an app. In that way, the `State` itself becomes immutable, thus eliminating a whole class of errors which ensue from your app being in an illegal state. `Messages` are mostly used spell out user-initiated *activities* (like clicking button) and *events* that happen afterward (like what should happen when a button is clicked).
+Changing the state of the application gives the perception of interactivity. `Messages` provide the ***only*** way to change the `State` of an app. In that way, the `State` itself becomes immutable, thus eliminating a whole class of errors which ensue from your app being in an illegal state. `Messages` are mostly used spell out user-initiated *activities* (like clicking button) and *events* that happen afterward (like what should happen when a button is clicked).
 
 The `iced.rs` library does the hard part for you: 
 * it provides a runtime that continuously listens for interactions with the app, 
 * and it provides common helpers one has come to expect from a GUI library.
+
 The main API exposed by the library that creates an app for you is defined (in a simplified way) like this:
 ```rust
-pub fn application<...>( title: ..., update: ..., view: ...) -> Application<...>
+pub fn application<...>
+    ( title: ..., update: ..., view: ...) 
+-> Application<...>
 ```
 This is a function that returns an instance of `Application` given the parameters listed. The `title` is a string displayed at the top of the window. Let's focus on the two parameters. The `view` parameter is actually a function that contains all your UI elements. For example, the `view` for the `iced-editor-app` looks like this:
 ```rust
@@ -96,3 +99,5 @@ fn view(&self) -> Element<'_, Message> {
 }
 ```
 In `iced.rs`, the library nudges you towards creating UI elements as functions. This is different from the object-oriented approach, where UI widgets are classes with behaviours defined on it. As far as I know, all UI widgets are exposed as functions. Our simple app is visually a column with `controls`, `input_area` and `status_bar` stacked atop each other. This is similar to how other declarative frameworks like SwiftUI or Flutter do it. The `controls` and `status_area` UI elements are rows with other widgets in them.
+
+The most important part (in my opinion), 
