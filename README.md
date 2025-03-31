@@ -1,10 +1,10 @@
-This is a tutorial explaining the YouTube video [[Building a simple editor with iced](https://www.youtube.com/watch?v=gcBJ7cPSALo)] by @hecrj on how to create minimal editor using [iced.rs](https://www.iced.rs). 
+This is a tutorial explaining the YouTube video [[Building a simple editor with iced](https://www.youtube.com/watch?v=gcBJ7cPSALo)] by @hecrj on how to create minimal text editor using [iced.rs](https://www.iced.rs). 
 
-[iced.rs](https://iced.rs/) is a GUI library that enables you to utilise [MVU or Elm Architecture](https://guide.elm-lang.org/architecture/) to make GUI apps in the Rust language. You would normally find this way of architecting GUIs common with functional languages like Elm and F#. But the same architecture can be leveraged to make GUIs in Rust because the language provides the same guarantees the architecture relies on in functional languages (immutability and referencial transparency). For more information on getting started with this library, head over to [Getting started - iced.rs](https://book.iced.rs/). 
+There are many ways to architect a GUI. By and large, most of the different ways make use of object-orientation. The UI widgets will most likely be classes which will have some properties and behaviours. It is said that GUI programming is one of the natural settings where object-oriented programming shines. [iced.rs](https://iced.rs/) is a GUI library that enables you to utilise [MVU or Elm Architecture](https://guide.elm-lang.org/architecture/) to make GUI apps in the Rust language. You would normally find this way of architecting GUIs common with functional languages like Elm and F#. But the same architecture can be leveraged to make GUIs in Rust because the language provides the same guarantees the architecture relies on in functional languages (immutability and referencial transparency). Further, Rust has first-class support for basic functional programming constructs. For more information on getting started with this library, head over to [Getting started - iced.rs](https://book.iced.rs/). 
 
 Let us get into it. Every `iced.rs` app has three main parts:
-* State
-* Messages
+* State (or Model)
+* Message
 * `iced.rs` glue
 
 For example, the `State` of this app is held in the struct `Editor`:
@@ -19,7 +19,19 @@ struct Editor {
 ```
 In this way of architecting apps, one seeks to capture all possible states the app can be in. Our editor is basic; we only want to *edit the contents* of the file we have opened, *show the path* of the file, and *choose a theme* from the list of default themes supplied with the library. This accounts for three of `Editor`'s fields. The `error` field is for tasks that can fail through no fault of ours, like opening a file or saving one. The `is_dirty` field is to track unsaved changes so we can make the `save button` active or not. 
 
-Changing the state of the application gives the perception of interactivity. `Messages` provide the ***only*** way to change the `State` of an app. In that way, the `State` itself becomes immutable, thus eliminating a whole class of errors which ensue from your app being in an illegal state. `Messages` are mostly used spell out user-initiated *activities* (like clicking button) and *events* that happen afterward (like what should happen when a button is clicked).
+Changing the state of the application gives the perception of interactivity. `Messages` provide the ***only*** way to change the `State` of an app. In that way, the `State` itself becomes immutable, thus eliminating a whole class of errors which ensue from your app being in an illegal state. `Messages` are mostly used spell out user-initiated *activities* (like clicking button) and *events* that happen afterward (like what should happen when a button is clicked). Below is the `Message` enum for this app:
+```rust
+#[derive(Debug, Clone)]
+enum Message {
+    Edit(text_editor::Action),
+    New,
+    Open,
+    FileOpened(Result<(PathBuf, Arc<String>), Error>),
+    Save,
+    FileSaved(Result<PathBuf, Error>),
+    ThemeSelected(iced_highlighter::Theme),
+}
+```
 
 The `iced.rs` library does the hard part for you: 
 * it provides a runtime that continuously listens for interactions with the app, 
@@ -100,4 +112,29 @@ fn view(&self) -> Element<'_, Message> {
 ```
 In `iced.rs`, the library nudges you towards creating UI elements as functions. This is different from the object-oriented approach, where UI widgets are classes with behaviours defined on it. As far as I know, all UI widgets are exposed as functions. Our simple app is visually a column with `controls`, `input_area` and `status_bar` stacked atop each other. This is similar to how other declarative frameworks like SwiftUI or Flutter do it. The `controls` and `status_area` UI elements are rows with other widgets in them.
 
-The most important part (in my opinion), 
+The most important part, in my opinion, is the `update` function. `Messages` change the `State` of the app through this function. Here is a snippet of the `update` function in this app::
+```rust
+fn update(&mut self, message: Message) -> Task<Message> {
+    match message {
+        Message::Edit(action) => {
+            self.is_dirty = self.is_dirty || action.is_edit();
+            self.content.perform(action);
+            self.error = None;
+
+            Task::none()
+        }
+        Message::New => {
+            // some code here
+            Task::none()
+        }
+        Message::Open => Task::perform(pick_file(), Message::FileOpened),
+        Message::FileOpened(Ok((path, content))) => {
+            // some code here
+
+            Task::none()
+        }
+        // More match statements...
+    }
+}
+```
+Every time a message is sent, the `update` function is called, and the `State` is changed, which in turns reloads the `view`. This may lead to another message being triggered; the whole process repeats. This is what I called the '`iced.rs` glue' earlier.
